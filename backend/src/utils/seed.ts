@@ -12,6 +12,11 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@navy.in';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ERROR: seed script must not be run in production.');
+    process.exit(1);
+  }
+
   await mongoose.connect(MONGODB_URI);
   console.log('Connected to MongoDB');
 

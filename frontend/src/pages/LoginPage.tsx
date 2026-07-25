@@ -90,8 +90,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-gray-500">
-            Demo: admin@navy.in / admin123
+          <p className="mt-6 text-center text-xs text-gray-400">
+            Indian Navy — Restricted Access
           </p>
         </div>
       </div>
