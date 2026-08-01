@@ -25,7 +25,11 @@ export default function DashboardPage() {
   });
 
   if (summaryQuery.isLoading || deptQuery.isLoading) {
-    return <div className="text-gray-500">Loading dashboard...</div>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-gray-500">Loading dashboard...</p>
+      </div>
+    );
   }
 
   if (summaryQuery.isError || deptQuery.isError) {
@@ -47,29 +51,27 @@ export default function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Department-wise task status overview
-        </p>
+        <h1 className="text-xl font-bold text-navy sm:text-2xl">Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">Department-wise task status overview</p>
       </div>
 
       <SummaryCards summary={summary} />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Status by Department</h2>
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+        <h2 className="mb-4 text-base font-semibold text-navy sm:text-lg">Status by Department</h2>
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+          <ResponsiveContainer width="100%" height={220} className="sm:!h-[300px]">
+            <BarChart data={chartData} margin={{ top: 0, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Legend />
-              <Bar dataKey="Completed" fill="#16a34a" />
-              <Bar dataKey="Ongoing" fill="#2563eb" />
-              <Bar dataKey="Overdue" fill="#dc2626" />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="Completed" fill="#16a34a" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Ongoing" fill="#2563eb" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Overdue" fill="#dc2626" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -78,9 +80,9 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-navy">Department Breakdown</h2>
+        <h2 className="mb-4 text-base font-semibold text-navy sm:text-lg">Department Breakdown</h2>
         {departments.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {departments.map((dept) => (
               <DeptCard key={dept.departmentId} dept={dept} />
             ))}
