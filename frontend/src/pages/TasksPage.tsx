@@ -66,6 +66,14 @@ export default function TasksPage() {
     onError: () => setCompletingId(null),
   });
 
+  const reopenMutation = useMutation({
+    mutationFn: (id: string) => tasksApi.update(id, { status: 'ongoing' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: tasksApi.remove,
     onSuccess: () => {
@@ -312,12 +320,22 @@ export default function TasksPage() {
                             {completingId === task.id ? '...' : 'Complete'}
                           </button>
                         )}
-                        <button
-                          onClick={() => setEditingTask(task)}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                        >
-                          Edit
-                        </button>
+                        {task.displayStatus === 'completed' ? (
+                          <button
+                            onClick={() => reopenMutation.mutate(task.id)}
+                            disabled={reopenMutation.isPending}
+                            className="text-xs font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                          >
+                            Reopen
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setEditingTask(task)}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(task.id)}
                           disabled={deletingId === task.id}
@@ -380,10 +398,20 @@ export default function TasksPage() {
                       {completingId === task.id ? '...' : '✓ Complete'}
                     </button>
                   )}
-                  <button onClick={() => setEditingTask(task)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                    Edit
-                  </button>
+                  {task.displayStatus === 'completed' ? (
+                    <button
+                      onClick={() => reopenMutation.mutate(task.id)}
+                      disabled={reopenMutation.isPending}
+                      className="text-sm font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                    >
+                      Reopen
+                    </button>
+                  ) : (
+                    <button onClick={() => setEditingTask(task)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                      Edit
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(task.id)}
                     disabled={deletingId === task.id}

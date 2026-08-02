@@ -162,6 +162,26 @@ router.post('/users', authenticate, requireAdmin, validateBody(createUserSchema)
   }
 });
 
+// Admin: reset any user's password — MUST be registered before PUT /users/:id
+// so Express doesn't treat "reset-password" as an :id param
+const adminResetPasswordSchema = z.object({
+  newPassword: z.string().min(6),
+});
+
+router.patch('/users/:id/reset-password', authenticate, requireAdmin, validateBody(adminResetPasswordSchema), async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.passwordHash = await bcrypt.hash(req.body.newPassword, 10);
+    await user.save();
+
+    return res.json({ message: 'Password reset successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
@@ -200,12 +220,27 @@ router.put('/users/:id', authenticate, requireAdmin, validateBody(updateUserSche
     }
 
     await user.save();
+
+    const populated = await User.findById(user._id)
+      .select('-passwordHash')
+      .populate('departmentId', 'name code');
+
     return res.json({
       id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
       departmentId: user.departmentId ? user.departmentId.toString() : null,
+      department:
+        populated?.departmentId &&
+        typeof populated.departmentId === 'object' &&
+        'name' in populated.departmentId
+          ? {
+              id: populated.departmentId._id.toString(),
+              name: (populated.departmentId as unknown as { name: string; code: string }).name,
+              code: (populated.departmentId as unknown as { name: string; code: string }).code,
+            }
+          : null,
     });
   } catch (err) {
     next(err);
@@ -231,25 +266,6 @@ router.patch('/change-password', authenticate, validateBody(changePasswordSchema
     await user.save();
 
     return res.json({ message: 'Password changed successfully' });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Admin: reset any user's password without knowing the old one
-const adminResetPasswordSchema = z.object({
-  newPassword: z.string().min(6),
-});
-
-router.patch('/users/:id/reset-password', authenticate, requireAdmin, validateBody(adminResetPasswordSchema), async (req, res, next) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    user.passwordHash = await bcrypt.hash(req.body.newPassword, 10);
-    await user.save();
-
-    return res.json({ message: 'Password reset successfully' });
   } catch (err) {
     next(err);
   }
