@@ -39,8 +39,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-sm font-bold text-navy">
-                IN
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white p-1">
+                <img src="/navy-logo.svg" alt="Indian Navy" className="h-full w-full object-contain" />
               </div>
               <div>
                 <h1 className="text-sm font-bold leading-tight">Indian Navy</h1>
@@ -114,8 +114,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-navy text-xs font-bold text-gold">
-              IN
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white p-0.5 border border-gray-200">
+              <img src="/navy-logo.svg" alt="Indian Navy" className="h-full w-full object-contain" />
             </div>
             <span className="text-sm font-semibold text-navy">Indian Navy</span>
           </div>

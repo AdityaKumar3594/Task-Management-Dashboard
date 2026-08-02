@@ -33,8 +33,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen">
       <div className="hidden w-1/2 flex-col justify-between bg-navy p-12 text-white lg:flex">
         <div>
-          <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-gold text-xl font-bold text-navy">
-            IN
+          <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-white p-2 shadow-md">
+            <img src="/navy-logo.svg" alt="Indian Navy" className="h-full w-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold">Indian Navy</h1>
           <p className="mt-2 text-lg text-white/70">Department Task Management Dashboard</p>
@@ -47,8 +47,8 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-navy text-sm font-bold text-gold">
-              IN
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white p-1 shadow border border-gray-200">
+              <img src="/navy-logo.svg" alt="Indian Navy" className="h-full w-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-navy">Indian Navy Task Dashboard</h1>
           </div>
