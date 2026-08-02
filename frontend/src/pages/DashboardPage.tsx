@@ -1,19 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  Bar, BarChart, CartesianGrid, Legend,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { dashboardApi } from '../api';
+import { useAuth } from '../context/AuthContext';
 import SummaryCards from '../components/SummaryCards';
 import DeptCard from '../components/DeptCard';
 
 export default function DashboardPage() {
+  const { isAdmin, user } = useAuth();
   const summaryQuery = useQuery({
     queryKey: ['dashboard', 'summary'],
     queryFn: dashboardApi.getSummary,
@@ -54,7 +50,11 @@ export default function DashboardPage() {
     <div className="space-y-6 sm:space-y-8">
       <div>
         <h1 className="text-xl font-bold text-navy sm:text-2xl">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Department-wise task status overview</p>
+        <p className="mt-1 text-sm text-gray-500">
+          {isAdmin
+            ? 'Organisation-wide task status overview'
+            : `${user?.department?.name ?? 'Department'} task status overview`}
+        </p>
       </div>
 
       <SummaryCards summary={summary} />

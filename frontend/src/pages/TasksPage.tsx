@@ -10,12 +10,16 @@ import type { CreateTaskInput, DisplayStatus, Task, TaskPriority } from '../type
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filterDept, setFilterDept] = useState('');
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | ''>('');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('');
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
+  // track which task IDs are mid-mutation to prevent double clicks
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const departmentsQuery = useQuery({
     queryKey: ['departments'],
@@ -56,7 +60,9 @@ export default function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setCompletingId(null);
     },
+    onError: () => setCompletingId(null),
   });
 
   const deleteMutation = useMutation({
@@ -64,21 +70,35 @@ export default function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setDeletingId(null);
     },
+    onError: () => setDeletingId(null),
   });
 
-  const handleCreate = async (data: CreateTaskInput) => {
-    await createMutation.mutateAsync(data);
+  const handleComplete = (id: string) => {
+    if (completingId) return;
+    if (!confirm('Mark this task as completed?')) return;
+    setCompletingId(id);
+    completeMutation.mutate(id);
   };
 
-  const handleUpdate = async (data: CreateTaskInput) => {
-    if (!editingTask) return;
-    await updateMutation.mutateAsync({ id: editingTask.id, data });
+  const handleDelete = (id: string) => {
+    if (deletingId) return;
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+    setDeletingId(id);
+    deleteMutation.mutate(id);
   };
 
   const formatDate = (date: string | null) => {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('en-IN');
+  };
+
+  // Due-soon warning: due within 3 days and not completed
+  const isDueSoon = (task: Task) => {
+    if (task.displayStatus === 'completed' || !task.dueDate) return false;
+    const diff = new Date(task.dueDate).getTime() - Date.now();
+    return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
   };
 
   const priorityColors: Record<TaskPriority, string> = {
@@ -92,6 +112,14 @@ export default function TasksPage() {
     medium: 'bg-yellow-100 text-yellow-800',
     high: 'bg-red-100 text-red-800',
   };
+
+  // Apply My Tasks filter client-side
+  const displayedTasks = (tasksQuery.data ?? []).filter((task) => {
+    if (myTasksOnly && user) {
+      return task.assignedTo?.id === user.id;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-5">
@@ -118,13 +146,9 @@ export default function TasksPage() {
             className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm min-w-[120px]"
           >
             <option value="">All Depts</option>
-            {departmentsQuery.data
-              ?.filter((d) => d.isActive)
-              .map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
-              ))}
+            {departmentsQuery.data?.filter((d) => d.isActive).map((dept) => (
+              <option key={dept.id} value={dept.id}>{dept.name}</option>
+            ))}
           </select>
         )}
         <select
@@ -147,6 +171,24 @@ export default function TasksPage() {
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
+
+        {/* My Tasks toggle */}
+        <button
+          onClick={() => setMyTasksOnly((v) => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors
+            ${myTasksOnly
+              ? 'border-navy bg-navy text-white'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-navy hover:text-navy'
+            }`}
+        >
+          <span>👤</span>
+          My Tasks
+          {myTasksOnly && (
+            <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">
+              {displayedTasks.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Content */}
@@ -154,11 +196,15 @@ export default function TasksPage() {
         <p className="py-8 text-center text-gray-500">Loading tasks...</p>
       ) : tasksQuery.isError ? (
         <p className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{getErrorMessage(tasksQuery.error)}</p>
-      ) : tasksQuery.data?.length === 0 ? (
-        <p className="py-8 text-center text-gray-500">No tasks found.</p>
+      ) : displayedTasks.length === 0 ? (
+        <div className="py-12 text-center">
+          <p className="text-gray-400 text-sm">
+            {myTasksOnly ? 'No tasks assigned to you.' : 'No tasks found.'}
+          </p>
+        </div>
       ) : (
         <>
-          {/* Desktop table — hidden on mobile */}
+          {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
@@ -173,19 +219,28 @@ export default function TasksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {tasksQuery.data?.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50">
+                {displayedTasks.map((task) => (
+                  <tr key={task.id} className={`hover:bg-gray-50 ${isDueSoon(task) ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{task.title}</p>
-                      {task.description && (
-                        <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{task.description}</p>
-                      )}
+                      <div className="flex items-start gap-2">
+                        <div>
+                          <p className="font-medium text-gray-900">{task.title}</p>
+                          {task.description && (
+                            <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{task.description}</p>
+                          )}
+                        </div>
+                        {isDueSoon(task) && (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Due soon
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{task.department?.name || '—'}</td>
                     <td className="px-4 py-3 text-gray-600">
                       {task.assignedTo ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy/10 text-[10px] font-bold text-navy">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-navy/10 text-[10px] font-bold text-navy">
                             {task.assignedTo.name.charAt(0).toUpperCase()}
                           </span>
                           {task.assignedTo.name}
@@ -202,18 +257,26 @@ export default function TasksPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         {task.displayStatus !== 'completed' && (
-                          <button onClick={() => completeMutation.mutate(task.id)}
-                            className="text-xs font-medium text-green-600 hover:text-green-800">
-                            Complete
+                          <button
+                            onClick={() => handleComplete(task.id)}
+                            disabled={completingId === task.id}
+                            className="text-xs font-medium text-green-600 hover:text-green-800 disabled:opacity-40"
+                          >
+                            {completingId === task.id ? '...' : 'Complete'}
                           </button>
                         )}
-                        <button onClick={() => setEditingTask(task)}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                        <button
+                          onClick={() => setEditingTask(task)}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                        >
                           Edit
                         </button>
-                        <button onClick={() => { if (confirm('Delete this task?')) deleteMutation.mutate(task.id); }}
-                          className="text-xs font-medium text-red-600 hover:text-red-800">
-                          Delete
+                        <button
+                          onClick={() => handleDelete(task.id)}
+                          disabled={deletingId === task.id}
+                          className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
+                        >
+                          {deletingId === task.id ? '...' : 'Delete'}
                         </button>
                       </div>
                     </td>
@@ -223,12 +286,20 @@ export default function TasksPage() {
             </table>
           </div>
 
-          {/* Mobile cards — shown only on small screens */}
+          {/* Mobile cards */}
           <div className="space-y-3 md:hidden">
-            {tasksQuery.data?.map((task) => (
-              <div key={task.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            {displayedTasks.map((task) => (
+              <div key={task.id}
+                className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${isDueSoon(task) ? 'border-amber-200 bg-amber-50/30' : ''}`}>
                 <div className="mb-2 flex items-start justify-between gap-2">
-                  <p className="font-medium text-gray-900 leading-snug">{task.title}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="font-medium text-gray-900 leading-snug">{task.title}</p>
+                    {isDueSoon(task) && (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                        Due soon
+                      </span>
+                    )}
+                  </div>
                   <StatusBadge status={task.displayStatus} />
                 </div>
                 {task.description && (
@@ -254,18 +325,24 @@ export default function TasksPage() {
                 </div>
                 <div className="flex gap-3 border-t border-gray-100 pt-2">
                   {task.displayStatus !== 'completed' && (
-                    <button onClick={() => completeMutation.mutate(task.id)}
-                      className="text-sm font-medium text-green-600 hover:text-green-800">
-                      ✓ Complete
+                    <button
+                      onClick={() => handleComplete(task.id)}
+                      disabled={completingId === task.id}
+                      className="text-sm font-medium text-green-600 hover:text-green-800 disabled:opacity-40"
+                    >
+                      {completingId === task.id ? '...' : '✓ Complete'}
                     </button>
                   )}
                   <button onClick={() => setEditingTask(task)}
                     className="text-sm font-medium text-blue-600 hover:text-blue-800">
                     Edit
                   </button>
-                  <button onClick={() => { if (confirm('Delete this task?')) deleteMutation.mutate(task.id); }}
-                    className="text-sm font-medium text-red-600 hover:text-red-800">
-                    Delete
+                  <button
+                    onClick={() => handleDelete(task.id)}
+                    disabled={deletingId === task.id}
+                    className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
+                  >
+                    {deletingId === task.id ? '...' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -276,13 +353,20 @@ export default function TasksPage() {
 
       {showModal && departmentsQuery.data && (
         <Modal title="Create Task" onClose={() => setShowModal(false)}>
-          <TaskForm departments={departmentsQuery.data} onSubmit={handleCreate} onCancel={() => setShowModal(false)} />
+          <TaskForm departments={departmentsQuery.data} onSubmit={async (data) => { await createMutation.mutateAsync(data); }} onCancel={() => setShowModal(false)} />
         </Modal>
       )}
 
       {editingTask && departmentsQuery.data && (
         <Modal title="Edit Task" onClose={() => setEditingTask(null)}>
-          <TaskForm departments={departmentsQuery.data} task={editingTask} onSubmit={handleUpdate} onCancel={() => setEditingTask(null)} />
+          <TaskForm
+            departments={departmentsQuery.data}
+            task={editingTask}
+            onSubmit={async (data) => {
+              await updateMutation.mutateAsync({ id: editingTask.id, data });
+            }}
+            onCancel={() => setEditingTask(null)}
+          />
         </Modal>
       )}
     </div>

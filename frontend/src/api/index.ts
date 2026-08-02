@@ -17,6 +17,10 @@ export const authApi = {
   me: () => api.get<User>('/auth/me').then((r) => r.data),
   getUsers: () => api.get<User[]>('/auth/users').then((r) => r.data),
   createUser: (data: CreateUserInput) => api.post<User>('/auth/users', data).then((r) => r.data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.patch('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
+  adminResetPassword: (userId: string, newPassword: string) =>
+    api.patch(`/auth/users/${userId}/reset-password`, { newPassword }).then((r) => r.data),
 };
 
 export const departmentsApi = {

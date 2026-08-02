@@ -162,4 +162,47 @@ router.post('/users', authenticate, requireAdmin, validateBody(createUserSchema)
   }
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(6),
+});
+
+router.patch('/change-password', authenticate, validateBody(changePasswordSchema), async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user!.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin: reset any user's password without knowing the old one
+const adminResetPasswordSchema = z.object({
+  newPassword: z.string().min(6),
+});
+
+router.patch('/users/:id/reset-password', authenticate, requireAdmin, validateBody(adminResetPasswordSchema), async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.passwordHash = await bcrypt.hash(req.body.newPassword, 10);
+    await user.save();
+
+    return res.json({ message: 'Password reset successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

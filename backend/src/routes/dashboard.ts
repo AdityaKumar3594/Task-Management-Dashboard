@@ -6,9 +6,13 @@ import { countByDisplayStatus } from '../utils/taskStatus';
 
 const router = Router();
 
-router.get('/summary', authenticate, async (_req, res, next) => {
+router.get('/summary', authenticate, async (req, res, next) => {
   try {
-    const tasks = await Task.find().select('status dueDate');
+    const filter = req.user!.role === 'department_user'
+      ? { departmentId: req.user!.departmentId }
+      : {};
+
+    const tasks = await Task.find(filter).select('status dueDate');
     const counts = countByDisplayStatus(tasks);
 
     return res.json({
@@ -22,10 +26,21 @@ router.get('/summary', authenticate, async (_req, res, next) => {
   }
 });
 
-router.get('/by-department', authenticate, async (_req, res, next) => {
+router.get('/by-department', authenticate, async (req, res, next) => {
   try {
-    const departments = await Department.find({ isActive: true }).sort({ name: 1 });
-    const tasks = await Task.find().select('departmentId status dueDate');
+    const isDeptUser = req.user!.role === 'department_user';
+
+    // Dept users only see their own department
+    const deptFilter = isDeptUser
+      ? { isActive: true, _id: req.user!.departmentId }
+      : { isActive: true };
+
+    const taskFilter = isDeptUser
+      ? { departmentId: req.user!.departmentId }
+      : {};
+
+    const departments = await Department.find(deptFilter).sort({ name: 1 });
+    const tasks = await Task.find(taskFilter).select('departmentId status dueDate');
 
     const breakdown = departments.map((dept) => {
       const deptTasks = tasks.filter((task) => task.departmentId.toString() === dept._id.toString());

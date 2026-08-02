@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ChangePasswordModal from './ChangePasswordModal';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `block rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
@@ -13,6 +14,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -23,13 +25,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
+        <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
       {/* Sidebar */}
@@ -49,7 +47,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <p className="text-xs text-white/60">Task Dashboard</p>
               </div>
             </div>
-            {/* Close button — mobile only */}
             <button
               onClick={closeSidebar}
               className="rounded-lg p-1 text-white/60 hover:text-white lg:hidden"
@@ -79,14 +76,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        <div className="border-t border-white/10 px-4 py-4">
-          <div className="mb-3 px-2">
+        {/* User footer */}
+        <div className="border-t border-white/10 px-4 py-4 space-y-2">
+          <div className="px-2">
             <p className="text-sm font-medium">{user?.name}</p>
             <p className="text-xs text-white/60">{user?.email}</p>
             {user?.department && (
               <p className="mt-1 text-xs text-gold">{user.department.name}</p>
             )}
           </div>
+          <button
+            onClick={() => { setShowChangePassword(true); closeSidebar(); }}
+            className="w-full rounded-lg border border-white/20 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10 text-left"
+          >
+            🔑 Change Password
+          </button>
           <button
             onClick={handleLogout}
             className="w-full rounded-lg border border-white/20 px-4 py-2 text-sm text-white/80 transition hover:bg-white/10"
@@ -98,7 +102,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
-
         {/* Mobile top bar */}
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
           <button
@@ -106,7 +109,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             className="rounded-lg p-2 text-navy hover:bg-gray-100"
             aria-label="Open menu"
           >
-            {/* Hamburger icon */}
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -117,11 +119,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-sm font-semibold text-navy">Indian Navy</span>
           </div>
-          <div className="w-9" /> {/* spacer to center title */}
+          <div className="w-9" />
         </header>
 
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </div>
   );
 }
