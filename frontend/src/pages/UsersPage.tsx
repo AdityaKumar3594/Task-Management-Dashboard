@@ -59,6 +59,16 @@ export default function UsersPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: authApi.deleteUser,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+
+  const handleDelete = (user: User) => {
+    if (!confirm(`Delete user "${user.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(user.id);
+  };
+
   // FIX #1: admin reset password mutation
   const resetMutation = useMutation({
     mutationFn: ({ id, password }: { id: string; password: string }) =>
@@ -248,6 +258,13 @@ export default function UsersPage() {
                           className="text-xs font-medium text-blue-600 hover:text-blue-800">Edit</button>
                         <button onClick={() => { setResetUser(user); setResetForm({ newPassword: '', confirmPassword: '' }); setResetError(''); setResetSuccess(false); }}
                           className="text-xs font-medium text-amber-600 hover:text-amber-800">Reset Password</button>
+                        <button
+                          onClick={() => handleDelete(user)}
+                          disabled={deleteMutation.isPending}
+                          className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -276,6 +293,13 @@ export default function UsersPage() {
                       className="text-xs font-medium text-blue-600 hover:text-blue-800">Edit</button>
                     <button onClick={() => { setResetUser(user); setResetForm({ newPassword: '', confirmPassword: '' }); setResetError(''); setResetSuccess(false); }}
                       className="text-xs font-medium text-amber-600 hover:text-amber-800">Reset Password</button>
+                    <button
+                      onClick={() => handleDelete(user)}
+                      disabled={deleteMutation.isPending}
+                      className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}

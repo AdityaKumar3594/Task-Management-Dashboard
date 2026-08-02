@@ -182,6 +182,23 @@ router.patch('/users/:id/reset-password', authenticate, requireAdmin, validateBo
   }
 });
 
+router.delete('/users/:id', authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent admin from deleting themselves
+    if (user._id.toString() === req.user!.id) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+
+    await user.deleteOne();
+    return res.json({ message: 'User deleted' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
