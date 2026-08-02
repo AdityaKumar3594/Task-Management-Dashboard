@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Task } from '../models/Task';
 import { Department } from '../models/Department';
+import { User } from '../models/User';
 import { authenticate, canAccessDepartment } from '../middleware/auth';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { getDisplayStatus } from '../utils/taskStatus';
@@ -13,6 +14,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   departmentId: z.string(),
+  assignedToId: z.string().optional().nullable(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   dueDate: z.string().datetime().optional().nullable(),
 });
@@ -39,10 +41,12 @@ function formatTask(task: InstanceType<typeof Task>) {
 
   const assignedBy =
     task.assignedBy && typeof task.assignedBy === 'object' && 'name' in task.assignedBy
-      ? {
-          id: task.assignedBy._id.toString(),
-          name: task.assignedBy.name,
-        }
+      ? { id: task.assignedBy._id.toString(), name: task.assignedBy.name }
+      : null;
+
+  const assignedTo =
+    task.assignedTo && typeof task.assignedTo === 'object' && 'name' in task.assignedTo
+      ? { id: task.assignedTo._id.toString(), name: (task.assignedTo as unknown as { name: string }).name }
       : null;
 
   const displayStatus = getDisplayStatus(task.status, task.dueDate);
@@ -54,6 +58,7 @@ function formatTask(task: InstanceType<typeof Task>) {
     departmentId: department?.id || task.departmentId.toString(),
     department,
     assignedBy,
+    assignedTo,
     priority: task.priority,
     dueDate: task.dueDate,
     status: task.status,
@@ -76,13 +81,12 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
       filter.departmentId = departmentId;
     }
 
-    if (priority) {
-      filter.priority = priority;
-    }
+    if (priority) filter.priority = priority;
 
     const tasks = await Task.find(filter)
       .populate('departmentId', 'name code')
       .populate('assignedBy', 'name')
+      .populate('assignedTo', 'name')
       .sort({ createdAt: -1 });
 
     let formatted = tasks.map(formatTask);
@@ -97,9 +101,25 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
   }
 });
 
+// Get users belonging to a specific department (for assignedTo dropdown)
+router.get('/department-users/:departmentId', authenticate, async (req, res, next) => {
+  try {
+    const users = await User.find({
+      departmentId: req.params.departmentId,
+      role: 'department_user',
+    }).select('name email');
+
+    return res.json(
+      users.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email }))
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, next) => {
   try {
-    const { title, description, departmentId, priority, dueDate } = req.body;
+    const { title, description, departmentId, assignedToId, priority, dueDate } = req.body;
 
     if (req.user!.role === 'department_user' && req.user!.departmentId !== departmentId) {
       return res.status(403).json({ message: 'You can only create tasks for your department' });
@@ -110,11 +130,20 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
       return res.status(400).json({ message: 'Invalid department' });
     }
 
+    // Validate assignedTo user belongs to the department
+    if (assignedToId) {
+      const assignee = await User.findById(assignedToId);
+      if (!assignee || assignee.departmentId?.toString() !== departmentId) {
+        return res.status(400).json({ message: 'Assigned user must belong to the selected department' });
+      }
+    }
+
     const task = await Task.create({
       title,
       description: description || '',
       departmentId,
       assignedBy: req.user!.id,
+      assignedTo: assignedToId || null,
       priority: priority || 'medium',
       dueDate: dueDate ? new Date(dueDate) : null,
       status: 'ongoing',
@@ -122,6 +151,7 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
 
     await task.populate('departmentId', 'name code');
     await task.populate('assignedBy', 'name');
+    await task.populate('assignedTo', 'name');
 
     return res.status(201).json(formatTask(task));
   } catch (err) {
@@ -140,11 +170,13 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const { title, description, departmentId, priority, dueDate, status } = req.body;
+    const { title, description, departmentId, assignedToId, priority, dueDate, status } = req.body;
 
     if (departmentId && req.user!.role === 'department_user' && req.user!.departmentId !== departmentId) {
       return res.status(403).json({ message: 'You cannot reassign tasks to other departments' });
     }
+
+    const effectiveDeptId = departmentId || task.departmentId.toString();
 
     if (departmentId) {
       const department = await Department.findById(departmentId);
@@ -152,6 +184,19 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
         return res.status(400).json({ message: 'Invalid department' });
       }
       task.departmentId = department._id;
+    }
+
+    // Validate assignedTo belongs to the (possibly updated) department
+    if (assignedToId !== undefined) {
+      if (assignedToId === null || assignedToId === '') {
+        task.assignedTo = null;
+      } else {
+        const assignee = await User.findById(assignedToId);
+        if (!assignee || assignee.departmentId?.toString() !== effectiveDeptId) {
+          return res.status(400).json({ message: 'Assigned user must belong to the selected department' });
+        }
+        task.assignedTo = assignee._id;
+      }
     }
 
     if (title) task.title = title;
@@ -167,6 +212,7 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
     await task.save();
     await task.populate('departmentId', 'name code');
     await task.populate('assignedBy', 'name');
+    await task.populate('assignedTo', 'name');
 
     return res.json(formatTask(task));
   } catch (err) {
@@ -177,9 +223,7 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
 router.patch('/:id/complete', authenticate, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
+    if (!task) return res.status(404).json({ message: 'Task not found' });
 
     if (!canAccessDepartment(req, task.departmentId.toString())) {
       return res.status(403).json({ message: 'Access denied' });
@@ -190,6 +234,7 @@ router.patch('/:id/complete', authenticate, async (req, res, next) => {
     await task.save();
     await task.populate('departmentId', 'name code');
     await task.populate('assignedBy', 'name');
+    await task.populate('assignedTo', 'name');
 
     return res.json(formatTask(task));
   } catch (err) {
@@ -200,9 +245,7 @@ router.patch('/:id/complete', authenticate, async (req, res, next) => {
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
+    if (!task) return res.status(404).json({ message: 'Task not found' });
 
     if (!canAccessDepartment(req, task.departmentId.toString())) {
       return res.status(403).json({ message: 'Access denied' });

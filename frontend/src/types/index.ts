@@ -32,6 +32,7 @@ export interface Task {
   departmentId: string;
   department: DepartmentRef | null;
   assignedBy: { id: string; name: string } | null;
+  assignedTo: { id: string; name: string } | null;
   priority: TaskPriority;
   dueDate: string | null;
   status: 'ongoing' | 'completed';
@@ -68,6 +69,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   departmentId: string;
+  assignedToId?: string | null;
   priority?: TaskPriority;
   dueDate?: string | null;
 }

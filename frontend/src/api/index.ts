@@ -36,6 +36,8 @@ export const tasksApi = {
     api.put<Task>(`/tasks/${id}`, data).then((r) => r.data),
   complete: (id: string) => api.patch<Task>(`/tasks/${id}/complete`).then((r) => r.data),
   remove: (id: string) => api.delete(`/tasks/${id}`).then((r) => r.data),
+  getDepartmentUsers: (departmentId: string) =>
+    api.get<{ id: string; name: string; email: string }[]>(`/tasks/department-users/${departmentId}`).then((r) => r.data),
 };
 
 export const dashboardApi = {

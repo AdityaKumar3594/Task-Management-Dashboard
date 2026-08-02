@@ -6,6 +6,7 @@ export interface ITask extends Document {
   description: string;
   departmentId: Types.ObjectId;
   assignedBy: Types.ObjectId;
+  assignedTo: Types.ObjectId | null;
   priority: TaskPriority;
   dueDate: Date | null;
   status: TaskStoredStatus;
@@ -20,6 +21,7 @@ const taskSchema = new Schema<ITask>(
     description: { type: String, default: '' },
     departmentId: { type: Schema.Types.ObjectId, ref: 'Department', required: true },
     assignedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedTo: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
     dueDate: { type: Date, default: null },
     status: { type: String, enum: ['ongoing', 'completed'], default: 'ongoing' },

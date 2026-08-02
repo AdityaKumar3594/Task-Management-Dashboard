@@ -165,6 +165,7 @@ export default function TasksPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium text-gray-600">Task</th>
                   <th className="px-4 py-3 font-medium text-gray-600">Department</th>
+                  <th className="px-4 py-3 font-medium text-gray-600">Assigned To</th>
                   <th className="px-4 py-3 font-medium text-gray-600">Priority</th>
                   <th className="px-4 py-3 font-medium text-gray-600">Due Date</th>
                   <th className="px-4 py-3 font-medium text-gray-600">Status</th>
@@ -181,6 +182,18 @@ export default function TasksPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{task.department?.name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {task.assignedTo ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy/10 text-[10px] font-bold text-navy">
+                            {task.assignedTo.name.charAt(0).toUpperCase()}
+                          </span>
+                          {task.assignedTo.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Unassigned</span>
+                      )}
+                    </td>
                     <td className={`px-4 py-3 font-medium capitalize ${priorityColors[task.priority]}`}>
                       {task.priority}
                     </td>
@@ -228,6 +241,11 @@ export default function TasksPage() {
                   {task.department && (
                     <span className="rounded-full bg-navy/10 px-2 py-0.5 font-medium text-navy">
                       {task.department.name}
+                    </span>
+                  )}
+                  {task.assignedTo && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
+                      👤 {task.assignedTo.name}
                     </span>
                   )}
                   {task.dueDate && (

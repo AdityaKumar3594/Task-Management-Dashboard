@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { tasksApi } from '../api';
 import type { CreateTaskInput, Department, Task, TaskPriority } from '../types';
 import { useAuth } from '../context/AuthContext';
+import UserSearchSelect from './UserSearchSelect';
 
 interface TaskFormProps {
   departments: Department[];
@@ -16,10 +19,9 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
   const [departmentId, setDepartmentId] = useState(
     task?.departmentId || user?.departmentId || departments[0]?.id || ''
   );
+  const [assignedToId, setAssignedToId] = useState(task?.assignedTo?.id || '');
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || 'medium');
-  const [dueDate, setDueDate] = useState(
-    task?.dueDate ? task.dueDate.slice(0, 10) : ''
-  );
+  const [dueDate, setDueDate] = useState(task?.dueDate ? task.dueDate.slice(0, 10) : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,16 +31,28 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
     }
   }, [isAdmin, user?.departmentId]);
 
+  // Reset assignedTo when department changes
+  useEffect(() => {
+    setAssignedToId('');
+  }, [departmentId]);
+
+  // Load users for the selected department
+  const deptUsersQuery = useQuery({
+    queryKey: ['dept-users', departmentId],
+    queryFn: () => tasksApi.getDepartmentUsers(departmentId),
+    enabled: !!departmentId,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       await onSubmit({
         title,
         description,
         departmentId,
+        assignedToId: assignedToId || null,
         priority,
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
       });
@@ -50,6 +64,7 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
   };
 
   const activeDepartments = departments.filter((d) => d.isActive);
+  const deptUsers = deptUsersQuery.data || [];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,6 +123,23 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
             <option value="high">High</option>
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Assign To
+          <span className="ml-1 text-xs font-normal text-gray-400">(optional)</span>
+        </label>
+        <UserSearchSelect
+          users={deptUsers}
+          value={assignedToId}
+          onChange={setAssignedToId}
+          loading={deptUsersQuery.isLoading}
+          disabled={!departmentId}
+        />
+        {!deptUsersQuery.isLoading && deptUsers.length === 0 && departmentId && (
+          <p className="mt-1 text-xs text-gray-400">No users in this department yet</p>
+        )}
       </div>
 
       <div>
