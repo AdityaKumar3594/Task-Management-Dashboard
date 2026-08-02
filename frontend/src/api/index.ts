@@ -17,6 +17,8 @@ export const authApi = {
   me: () => api.get<User>('/auth/me').then((r) => r.data),
   getUsers: () => api.get<User[]>('/auth/users').then((r) => r.data),
   createUser: (data: CreateUserInput) => api.post<User>('/auth/users', data).then((r) => r.data),
+  updateUser: (id: string, data: Partial<{ name: string; email: string; role: string; departmentId: string | null }>) =>
+    api.put<User>(`/auth/users/${id}`, data).then((r) => r.data),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
   adminResetPassword: (userId: string, newPassword: string) =>

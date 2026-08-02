@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 interface UserOption {
   id: string;
@@ -8,7 +8,7 @@ interface UserOption {
 
 interface UserSearchSelectProps {
   users: UserOption[];
-  value: string;           // selected user id
+  value: string;
   onChange: (id: string) => void;
   loading?: boolean;
   disabled?: boolean;
@@ -23,26 +23,58 @@ export default function UserSearchSelect({
 }: UserSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  // FIX #3: use fixed positioning calculated from trigger rect to escape modal overflow
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = users.find((u) => u.id === value) || null;
 
-  // Close on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  // Calculate dropdown position relative to trigger button
+  useLayoutEffect(() => {
+    if (!open || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 260;
 
-  // Focus input when opened
+    if (spaceBelow >= dropdownHeight) {
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    } else {
+      setDropdownStyle({
+        position: 'fixed',
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
+  }, [open]);
+
+  // Close on outside click or scroll
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (!open) return;
+    function handleClose(e: MouseEvent | Event) {
+      if (e instanceof MouseEvent && containerRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+      setSearch('');
+    }
+    document.addEventListener('mousedown', handleClose);
+    window.addEventListener('scroll', handleClose, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClose);
+      window.removeEventListener('scroll', handleClose, true);
+    };
+  }, [open]);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 0);
   }, [open]);
 
   const filtered = search.trim()
@@ -67,7 +99,7 @@ export default function UserSearchSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Trigger button */}
+      {/* Trigger */}
       <button
         type="button"
         disabled={disabled || loading}
@@ -91,7 +123,7 @@ export default function UserSearchSelect({
           {selected && (
             <span
               onClick={handleClear}
-              className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
+              className="cursor-pointer rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               title="Clear"
             >
               ✕
@@ -104,10 +136,9 @@ export default function UserSearchSelect({
         </span>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — rendered at fixed position to escape modal overflow */}
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg">
-          {/* Search input */}
+        <div style={dropdownStyle} className="rounded-xl border border-gray-200 bg-white shadow-xl">
           <div className="border-b border-gray-100 p-2">
             <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 focus-within:border-navy focus-within:ring-1 focus-within:ring-navy">
               <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,9 +160,7 @@ export default function UserSearchSelect({
             </div>
           </div>
 
-          {/* Options list */}
           <ul className="max-h-48 overflow-y-auto py-1">
-            {/* Unassigned option */}
             <li>
               <button
                 type="button"
@@ -139,25 +168,19 @@ export default function UserSearchSelect({
                 className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50
                   ${!value ? 'bg-navy/5 font-medium text-navy' : 'text-gray-500'}`}
               >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-gray-300 text-gray-400 text-xs">
-                  —
-                </span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-gray-300 text-gray-400 text-xs">—</span>
                 Unassigned
               </button>
             </li>
-
             {filtered.length === 0 ? (
-              <li className="px-3 py-4 text-center text-sm text-gray-400">
-                No users found
-              </li>
+              <li className="px-3 py-4 text-center text-sm text-gray-400">No users found</li>
             ) : (
               filtered.map((u) => (
                 <li key={u.id}>
                   <button
                     type="button"
                     onClick={() => handleSelect(u.id)}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50
-                      ${value === u.id ? 'bg-navy/5' : ''}`}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 ${value === u.id ? 'bg-navy/5' : ''}`}
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-bold text-navy">
                       {u.name.charAt(0).toUpperCase()}
@@ -168,9 +191,7 @@ export default function UserSearchSelect({
                       </span>
                       <span className="block truncate text-xs text-gray-400">{u.email}</span>
                     </span>
-                    {value === u.id && (
-                      <span className="ml-auto shrink-0 text-navy">✓</span>
-                    )}
+                    {value === u.id && <span className="ml-auto shrink-0 text-navy">✓</span>}
                   </button>
                 </li>
               ))

@@ -7,7 +7,6 @@ import TaskForm from '../components/TaskForm';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import type { CreateTaskInput, DisplayStatus, Task, TaskPriority } from '../types';
-
 export default function TasksPage() {
   const queryClient = useQueryClient();
   const { isAdmin, user } = useAuth();
@@ -17,6 +16,8 @@ export default function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | ''>('');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('');
   const [myTasksOnly, setMyTasksOnly] = useState(false);
+  // FIX #8: free-text search
+  const [search, setSearch] = useState('');
   // track which task IDs are mid-mutation to prevent double clicks
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -113,10 +114,12 @@ export default function TasksPage() {
     high: 'bg-red-100 text-red-800',
   };
 
-  // Apply My Tasks filter client-side
+  // Apply My Tasks + search filters client-side
   const displayedTasks = (tasksQuery.data ?? []).filter((task) => {
-    if (myTasksOnly && user) {
-      return task.assignedTo?.id === user.id;
+    if (myTasksOnly && user && task.assignedTo?.id !== user.id) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return task.title.toLowerCase().includes(q) || task.description?.toLowerCase().includes(q);
     }
     return true;
   });
@@ -139,6 +142,26 @@ export default function TasksPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:gap-3 sm:p-4">
+        {/* FIX #8: search input */}
+        <div className="relative flex-1 min-w-[160px]">
+          <svg className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks..."
+            className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy"
+          />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">✕</button>
+          )}
+        </div>
+
         {isAdmin && (
           <select
             value={filterDept}
@@ -193,14 +216,38 @@ export default function TasksPage() {
 
       {/* Content */}
       {tasksQuery.isLoading ? (
-        <p className="py-8 text-center text-gray-500">Loading tasks...</p>
+        /* FIX #15: skeleton loader */
+        <div className="space-y-3">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-16 animate-pulse rounded-full bg-gray-200" />
+              </div>
+              <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-gray-100" />
+            </div>
+          ))}
+        </div>
       ) : tasksQuery.isError ? (
         <p className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{getErrorMessage(tasksQuery.error)}</p>
       ) : displayedTasks.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-gray-400 text-sm">
-            {myTasksOnly ? 'No tasks assigned to you.' : 'No tasks found.'}
+        /* FIX #11 + #2: proper empty state */
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <div className="mb-3 text-4xl">{myTasksOnly ? '👤' : '📋'}</div>
+          <p className="font-medium text-gray-600">
+            {myTasksOnly ? 'No tasks assigned to you' : search ? `No tasks matching "${search}"` : 'No tasks found'}
           </p>
+          <p className="mt-1 text-sm text-gray-400">
+            {myTasksOnly ? 'Tasks assigned to you will appear here' : 'Create a new task to get started'}
+          </p>
+          {(myTasksOnly || search) && (
+            <button
+              onClick={() => { setMyTasksOnly(false); setSearch(''); }}
+              className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <>

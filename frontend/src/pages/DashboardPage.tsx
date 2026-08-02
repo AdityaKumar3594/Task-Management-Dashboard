@@ -22,8 +22,45 @@ export default function DashboardPage() {
 
   if (summaryQuery.isLoading || deptQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-gray-500">Loading dashboard...</p>
+      <div className="space-y-6 sm:space-y-8">
+        <div>
+          <div className="h-7 w-36 animate-pulse rounded bg-gray-200" />
+          <div className="mt-2 h-4 w-56 animate-pulse rounded bg-gray-100" />
+        </div>
+        {/* KPI card skeletons */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+              <div className="mt-3 h-8 w-16 animate-pulse rounded bg-gray-200" />
+            </div>
+          ))}
+        </div>
+        {/* Chart skeleton */}
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 h-5 w-40 animate-pulse rounded bg-gray-200" />
+          <div className="h-[220px] animate-pulse rounded-lg bg-gray-100" />
+        </div>
+        {/* Dept card skeletons */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1,2,3].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex justify-between">
+                <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+                <div className="h-5 w-16 animate-pulse rounded-full bg-gray-200" />
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[1,2,3,4].map((j) => (
+                  <div key={j} className="flex flex-col items-center gap-1">
+                    <div className="h-6 w-8 animate-pulse rounded bg-gray-200" />
+                    <div className="h-3 w-10 animate-pulse rounded bg-gray-100" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 h-2 animate-pulse rounded-full bg-gray-100" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

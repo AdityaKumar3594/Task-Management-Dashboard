@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute, { AdminRoute } from './components/ProtectedRoute';
+import ApiWarmup from './components/ApiWarmup';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
@@ -19,6 +20,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <ApiWarmup />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>

@@ -69,6 +69,23 @@ function formatTask(task: InstanceType<typeof Task>) {
   };
 }
 
+// FIX #4: department-users route MUST be before /:id to avoid Express matching
+// "department-users" as an ID param
+router.get('/department-users/:departmentId', authenticate, async (req, res, next) => {
+  try {
+    const users = await User.find({
+      departmentId: req.params.departmentId,
+      role: 'department_user',
+    }).select('name email');
+
+    return res.json(
+      users.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email }))
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, next) => {
   try {
     const { departmentId, status, priority } = req.query as z.infer<typeof taskQuerySchema>;
@@ -101,22 +118,6 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
   }
 });
 
-// Get users belonging to a specific department (for assignedTo dropdown)
-router.get('/department-users/:departmentId', authenticate, async (req, res, next) => {
-  try {
-    const users = await User.find({
-      departmentId: req.params.departmentId,
-      role: 'department_user',
-    }).select('name email');
-
-    return res.json(
-      users.map((u) => ({ id: u._id.toString(), name: u.name, email: u.email }))
-    );
-  } catch (err) {
-    next(err);
-  }
-});
-
 router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, next) => {
   try {
     const { title, description, departmentId, assignedToId, priority, dueDate } = req.body;
@@ -130,7 +131,6 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
       return res.status(400).json({ message: 'Invalid department' });
     }
 
-    // Validate assignedTo user belongs to the department
     if (assignedToId) {
       const assignee = await User.findById(assignedToId);
       if (!assignee || assignee.departmentId?.toString() !== departmentId) {
@@ -162,9 +162,7 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
 router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
+    if (!task) return res.status(404).json({ message: 'Task not found' });
 
     if (!canAccessDepartment(req, task.departmentId.toString())) {
       return res.status(403).json({ message: 'Access denied' });
@@ -186,7 +184,6 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
       task.departmentId = department._id;
     }
 
-    // Validate assignedTo belongs to the (possibly updated) department
     if (assignedToId !== undefined) {
       if (assignedToId === null || assignedToId === '') {
         task.assignedTo = null;

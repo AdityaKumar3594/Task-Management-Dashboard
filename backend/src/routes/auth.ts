@@ -162,6 +162,56 @@ router.post('/users', authenticate, requireAdmin, validateBody(createUserSchema)
   }
 });
 
+const updateUserSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  role: z.enum(['admin', 'department_user']).optional(),
+  departmentId: z.string().optional().nullable(),
+});
+
+router.put('/users/:id', authenticate, requireAdmin, validateBody(updateUserSchema), async (req, res, next) => {
+  try {
+    const { name, email, role, departmentId } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (email && email.toLowerCase() !== user.email) {
+      const existing = await User.findOne({ email: email.toLowerCase() });
+      if (existing) return res.status(409).json({ message: 'Email already in use' });
+      user.email = email.toLowerCase();
+    }
+
+    if (role === 'department_user' && !departmentId) {
+      return res.status(400).json({ message: 'Department is required for department users' });
+    }
+    if (role === 'admin' && departmentId) {
+      return res.status(400).json({ message: 'Admin users cannot be assigned to a department' });
+    }
+    if (departmentId) {
+      const dept = await Department.findById(departmentId);
+      if (!dept || !dept.isActive) return res.status(400).json({ message: 'Invalid department' });
+    }
+
+    if (name) user.name = name;
+    if (role) {
+      user.role = role;
+      user.departmentId = role === 'department_user' && departmentId ? departmentId : null;
+    }
+
+    await user.save();
+    return res.json({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentId: user.departmentId ? user.departmentId.toString() : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(6),
