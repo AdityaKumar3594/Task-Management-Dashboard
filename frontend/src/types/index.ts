@@ -87,3 +87,11 @@ export interface CreateDepartmentInput {
   code: string;
   description?: string;
 }
+
+export interface PaginatedTasks {
+  tasks: Task[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi, tasksApi } from '../api';
 import { getErrorMessage } from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import TaskForm from '../components/TaskForm';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { useAuth } from '../context/AuthContext';
 import type { CreateTaskInput, DisplayStatus, Task, TaskPriority } from '../types';
+
+const LIMIT = 10;
+
 export default function TasksPage() {
   const queryClient = useQueryClient();
   const { isAdmin, user } = useAuth();
@@ -16,11 +20,13 @@ export default function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | ''>('');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('');
   const [myTasksOnly, setMyTasksOnly] = useState(false);
-  // FIX #8: free-text search
   const [search, setSearch] = useState('');
-  // track which task IDs are mid-mutation to prevent double clicks
+  const [page, setPage] = useState(1);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Reset to page 1 whenever any server-side filter changes
+  useEffect(() => { setPage(1); }, [filterDept, filterStatus, filterPriority]);
 
   const departmentsQuery = useQuery({
     queryKey: ['departments'],
@@ -28,12 +34,14 @@ export default function TasksPage() {
   });
 
   const tasksQuery = useQuery({
-    queryKey: ['tasks', filterDept, filterStatus, filterPriority],
+    queryKey: ['tasks', filterDept, filterStatus, filterPriority, page],
     queryFn: () =>
       tasksApi.getAll({
         departmentId: filterDept || undefined,
         status: filterStatus || undefined,
         priority: filterPriority || undefined,
+        page,
+        limit: LIMIT,
       }),
   });
 
@@ -103,7 +111,6 @@ export default function TasksPage() {
     return new Date(date).toLocaleDateString('en-IN');
   };
 
-  // Due-soon warning: due within 3 days and not completed
   const isDueSoon = (task: Task) => {
     if (task.displayStatus === 'completed' || !task.dueDate) return false;
     const diff = new Date(task.dueDate).getTime() - Date.now();
@@ -122,8 +129,9 @@ export default function TasksPage() {
     high: 'bg-red-100 text-red-800',
   };
 
-  // Apply My Tasks + search filters client-side
-  const displayedTasks = (tasksQuery.data ?? []).filter((task) => {
+  // My Tasks + search applied client-side on the current page's data
+  const allTasks = tasksQuery.data?.tasks ?? [];
+  const displayedTasks = allTasks.filter((task) => {
     if (myTasksOnly && user && task.assignedTo?.id !== user.id) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -131,6 +139,8 @@ export default function TasksPage() {
     }
     return true;
   });
+
+  const paginationData = tasksQuery.data;
 
   return (
     <div className="space-y-5">
@@ -150,7 +160,7 @@ export default function TasksPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:gap-3 sm:p-4">
-        {/* FIX #8: search input */}
+        {/* Search */}
         <div className="relative flex-1 min-w-[160px]">
           <svg className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
             fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,6 +176,7 @@ export default function TasksPage() {
           />
           {search && (
             <button onClick={() => setSearch('')}
+              aria-label="Clear search"
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">✕</button>
           )}
         </div>
@@ -182,6 +193,7 @@ export default function TasksPage() {
             ))}
           </select>
         )}
+
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as DisplayStatus | '')}
@@ -192,6 +204,7 @@ export default function TasksPage() {
           <option value="ongoing">Ongoing</option>
           <option value="overdue">Overdue</option>
         </select>
+
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value as TaskPriority | '')}
@@ -224,9 +237,8 @@ export default function TasksPage() {
 
       {/* Content */}
       {tasksQuery.isLoading ? (
-        /* FIX #15: skeleton loader */
         <div className="space-y-3">
-          {[1,2,3,4].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
@@ -239,7 +251,6 @@ export default function TasksPage() {
       ) : tasksQuery.isError ? (
         <p className="rounded-xl bg-red-50 p-4 text-sm text-red-600">{getErrorMessage(tasksQuery.error)}</p>
       ) : displayedTasks.length === 0 ? (
-        /* FIX #11 + #2: proper empty state */
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
           <div className="mb-3 text-4xl">{myTasksOnly ? '👤' : '📋'}</div>
           <p className="font-medium text-gray-600">
@@ -423,12 +434,27 @@ export default function TasksPage() {
               </div>
             ))}
           </div>
+
+          {/* Pagination — only show when there are multiple pages */}
+          {paginationData && paginationData.totalPages > 1 && (
+            <Pagination
+              page={paginationData.page}
+              totalPages={paginationData.totalPages}
+              total={paginationData.total}
+              limit={LIMIT}
+              onPageChange={setPage}
+            />
+          )}
         </>
       )}
 
       {showModal && departmentsQuery.data && (
         <Modal title="Create Task" onClose={() => setShowModal(false)}>
-          <TaskForm departments={departmentsQuery.data} onSubmit={async (data) => { await createMutation.mutateAsync(data); }} onCancel={() => setShowModal(false)} />
+          <TaskForm
+            departments={departmentsQuery.data}
+            onSubmit={async (data) => { await createMutation.mutateAsync(data); }}
+            onCancel={() => setShowModal(false)}
+          />
         </Modal>
       )}
 

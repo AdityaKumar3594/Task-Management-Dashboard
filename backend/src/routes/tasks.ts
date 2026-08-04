@@ -6,7 +6,6 @@ import { User } from '../models/User';
 import { authenticate, canAccessDepartment } from '../middleware/auth';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { getDisplayStatus } from '../utils/taskStatus';
-import { DisplayStatus } from '../types';
 
 const router = Router();
 
@@ -27,6 +26,8 @@ const taskQuerySchema = z.object({
   departmentId: z.string().optional(),
   status: z.enum(['completed', 'ongoing', 'overdue']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
 });
 
 function formatTask(task: InstanceType<typeof Task>) {
@@ -88,7 +89,7 @@ router.get('/department-users/:departmentId', authenticate, async (req, res, nex
 
 router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, next) => {
   try {
-    const { departmentId, status, priority } = req.query as z.infer<typeof taskQuerySchema>;
+    const { departmentId, status, priority, page, limit } = req.query as unknown as z.infer<typeof taskQuerySchema>;
 
     const filter: Record<string, unknown> = {};
 
@@ -100,19 +101,47 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
 
     if (priority) filter.priority = priority;
 
+    // When filtering by overdue (computed status), fetch all then filter in JS.
+    // Otherwise paginate directly in MongoDB for efficiency.
+    if (status === 'overdue') {
+      const tasks = await Task.find(filter)
+        .populate('departmentId', 'name code')
+        .populate('assignedBy', 'name')
+        .populate('assignedTo', 'name')
+        .sort({ createdAt: -1 });
+
+      const allFormatted = tasks.map(formatTask).filter(
+        (t) => t.displayStatus === 'overdue'
+      );
+
+      const total = allFormatted.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const safePage = Math.min(page, totalPages);
+      const paginated = allFormatted.slice((safePage - 1) * limit, safePage * limit);
+
+      return res.json({ tasks: paginated, total, page: safePage, limit, totalPages });
+    }
+
+    // For stored statuses (completed / ongoing) filter in MongoDB directly
+    if (status === 'completed' || status === 'ongoing') {
+      filter.status = status;
+    }
+
+    const total = await Task.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+
     const tasks = await Task.find(filter)
       .populate('departmentId', 'name code')
       .populate('assignedBy', 'name')
       .populate('assignedTo', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip((safePage - 1) * limit)
+      .limit(limit);
 
-    let formatted = tasks.map(formatTask);
+    const formatted = tasks.map(formatTask);
 
-    if (status) {
-      formatted = formatted.filter((task) => task.displayStatus === (status as DisplayStatus));
-    }
-
-    return res.json(formatted);
+    return res.json({ tasks: formatted, total, page: safePage, limit, totalPages });
   } catch (err) {
     next(err);
   }

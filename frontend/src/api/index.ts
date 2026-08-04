@@ -7,6 +7,7 @@ import type {
   Department,
   DepartmentBreakdown,
   LoginResponse,
+  PaginatedTasks,
   Task,
   User,
 } from '../types';
@@ -37,8 +38,13 @@ export const departmentsApi = {
 };
 
 export const tasksApi = {
-  getAll: (params?: { departmentId?: string; status?: string; priority?: string }) =>
-    api.get<Task[]>('/tasks', { params }).then((r) => r.data),
+  getAll: (params?: {
+    departmentId?: string;
+    status?: string;
+    priority?: string;
+    page?: number;
+    limit?: number;
+  }) => api.get<PaginatedTasks>('/tasks', { params }).then((r) => r.data),
   create: (data: CreateTaskInput) => api.post<Task>('/tasks', data).then((r) => r.data),
   update: (id: string, data: Partial<CreateTaskInput & { status: string }>) =>
     api.put<Task>(`/tasks/${id}`, data).then((r) => r.data),
