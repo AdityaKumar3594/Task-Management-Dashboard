@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { departmentsApi, tasksApi } from '../api';
 import { getErrorMessage } from '../api/client';
 import StatusBadge from '../components/StatusBadge';
@@ -14,9 +15,12 @@ const LIMIT = 10;
 export default function TasksPage() {
   const queryClient = useQueryClient();
   const { isAdmin, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [filterDept, setFilterDept] = useState('');
+  // Initialise filterDept from URL param so Dashboard → DeptCard click works
+  const [filterDept, setFilterDept] = useState(() => searchParams.get('dept') ?? '');
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | ''>('');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | ''>('');
   const [myTasksOnly, setMyTasksOnly] = useState(false);
@@ -24,6 +28,13 @@ export default function TasksPage() {
   const [page, setPage] = useState(1);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Sync filterDept back into URL so the browser back button works
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (filterDept) params.dept = filterDept;
+    setSearchParams(params, { replace: true });
+  }, [filterDept]);
 
   // Reset to page 1 whenever any server-side filter changes
   useEffect(() => { setPage(1); }, [filterDept, filterStatus, filterPriority]);
@@ -148,7 +159,16 @@ export default function TasksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-navy sm:text-2xl">Tasks</h1>
-          <p className="mt-0.5 text-sm text-gray-500">Manage and track department tasks</p>
+          <p className="mt-0.5 text-sm text-gray-500">
+            {filterDept && departmentsQuery.data
+              ? (() => {
+                  const dept = departmentsQuery.data.find((d) => d.id === filterDept);
+                  return dept
+                    ? <span>Showing tasks for <span className="font-medium text-navy">{dept.name}</span> · <button onClick={() => setFilterDept('')} className="text-blue-600 hover:underline">Clear</button></span>
+                    : 'Manage and track department tasks';
+                })()
+              : 'Manage and track department tasks'}
+          </p>
         </div>
         <button
           onClick={() => setShowModal(true)}

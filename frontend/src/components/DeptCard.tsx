@@ -1,27 +1,34 @@
 import type { DepartmentBreakdown } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 interface DeptCardProps {
   dept: DepartmentBreakdown;
 }
 
 export default function DeptCard({ dept }: DeptCardProps) {
-  // FIX #12: visual urgency when there are overdue tasks
+  const navigate = useNavigate();
   const hasOverdue = dept.overdue > 0;
 
   return (
-    <div className={`rounded-xl border bg-white p-5 shadow-sm transition-colors ${
-      hasOverdue ? 'border-red-200' : 'border-gray-200'
-    }`}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/tasks?dept=${dept.departmentId}`)}
+      onKeyDown={(e) => e.key === 'Enter' && navigate(`/tasks?dept=${dept.departmentId}`)}
+      aria-label={`View tasks for ${dept.name}`}
+      className={`group cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 ${
+        hasOverdue ? 'border-red-200' : 'border-gray-200'
+      }`}
+    >
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="font-semibold text-navy">{dept.name}</h3>
+          <h3 className="font-semibold text-navy group-hover:underline">{dept.name}</h3>
           <p className="text-xs text-gray-500">{dept.code}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="rounded-full bg-navy/10 px-2.5 py-1 text-xs font-semibold text-navy">
             {dept.completionRate}% done
           </span>
-          {/* FIX #12: overdue warning badge */}
           {hasOverdue && (
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
               {dept.overdue} overdue
@@ -57,6 +64,11 @@ export default function DeptCard({ dept }: DeptCardProps) {
           style={{ width: `${dept.completionRate}%` }}
         />
       </div>
+
+      {/* View tasks hint */}
+      <p className="mt-3 text-center text-xs text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
+        Click to view tasks →
+      </p>
     </div>
   );
 }
