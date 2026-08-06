@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 import TaskForm from '../components/TaskForm';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import TaskDetailModal from '../components/TaskDetailModal';
 import { useAuth } from '../context/AuthContext';
 import type { CreateTaskInput, DisplayStatus, Task, TaskPriority } from '../types';
 
@@ -19,6 +20,7 @@ export default function TasksPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   // Initialise filterDept from URL param so Dashboard → DeptCard click works
   const [filterDept, setFilterDept] = useState(() => searchParams.get('dept') ?? '');
   const [filterStatus, setFilterStatus] = useState<DisplayStatus | ''>('');
@@ -92,7 +94,6 @@ export default function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
-
   const deleteMutation = useMutation({
     mutationFn: tasksApi.remove,
     onSuccess: () => {
@@ -306,7 +307,9 @@ export default function TasksPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {displayedTasks.map((task) => (
-                  <tr key={task.id} className={`hover:bg-gray-50 ${isDueSoon(task) ? 'bg-amber-50/50' : ''}`}>
+                  <tr key={task.id}
+                    onClick={() => setViewingTask(task)}
+                    className={`cursor-pointer hover:bg-gray-50 ${isDueSoon(task) ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-2">
                         <div>
@@ -341,7 +344,7 @@ export default function TasksPage() {
                     <td className="px-4 py-3 text-gray-600">{formatDate(task.dueDate)}</td>
                     <td className="px-4 py-3"><StatusBadge status={task.displayStatus} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         {task.displayStatus !== 'completed' && (
                           <button
                             onClick={() => handleComplete(task.id)}
@@ -386,7 +389,8 @@ export default function TasksPage() {
           <div className="space-y-3 md:hidden">
             {displayedTasks.map((task) => (
               <div key={task.id}
-                className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${isDueSoon(task) ? 'border-amber-200 bg-amber-50/30' : ''}`}>
+                onClick={() => setViewingTask(task)}
+                className={`cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${isDueSoon(task) ? 'border-amber-200 bg-amber-50/30' : ''}`}>
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2">
                     <p className="font-medium text-gray-900 leading-snug">{task.title}</p>
@@ -419,7 +423,7 @@ export default function TasksPage() {
                     <span className="text-gray-500">Due: {formatDate(task.dueDate)}</span>
                   )}
                 </div>
-                <div className="flex gap-3 border-t border-gray-100 pt-2">
+                <div className="flex gap-3 border-t border-gray-100 pt-2" onClick={(e) => e.stopPropagation()}>
                   {task.displayStatus !== 'completed' && (
                     <button
                       onClick={() => handleComplete(task.id)}
@@ -489,6 +493,44 @@ export default function TasksPage() {
             onCancel={() => setEditingTask(null)}
           />
         </Modal>
+      )}
+
+      {/* Task detail modal — opens on row/card click */}
+      {viewingTask && (
+        <TaskDetailModal
+          task={viewingTask}
+          onClose={() => setViewingTask(null)}
+          onEdit={() => {
+            setEditingTask(viewingTask);
+            setViewingTask(null);
+          }}
+          onComplete={() => {
+            if (!confirm('Mark this task as completed?')) return;
+            setCompletingId(viewingTask.id);
+            completeMutation.mutate(viewingTask.id, {
+              onSuccess: () => { setViewingTask(null); },
+            });
+          }}
+          onReopen={() => {
+            reopenMutation.mutate(viewingTask.id, {
+              onSuccess: () => {
+                setViewingTask(null);
+                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+              },
+            });
+          }}
+          onDelete={() => {
+            if (!confirm('Delete this task? This cannot be undone.')) return;
+            setDeletingId(viewingTask.id);
+            deleteMutation.mutate(viewingTask.id, {
+              onSuccess: () => { setViewingTask(null); },
+            });
+          }}
+          completing={completingId === viewingTask.id}
+          deleting={deletingId === viewingTask.id}
+          reopening={reopenMutation.isPending}
+        />
       )}
     </div>
   );
