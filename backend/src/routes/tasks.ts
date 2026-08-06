@@ -156,8 +156,11 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
     }
 
     const department = await Department.findById(departmentId);
-    if (!department || !department.isActive) {
-      return res.status(400).json({ message: 'Invalid department' });
+    if (!department) {
+      return res.status(400).json({ message: 'Department not found. Please select a valid department.' });
+    }
+    if (!department.isActive) {
+      return res.status(400).json({ message: `Department "${department.name}" is inactive. Please select an active department.` });
     }
 
     if (assignedToId) {

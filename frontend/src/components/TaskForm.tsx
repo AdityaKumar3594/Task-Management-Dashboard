@@ -17,7 +17,7 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [departmentId, setDepartmentId] = useState(
-    task?.departmentId || user?.departmentId || departments[0]?.id || ''
+    task?.departmentId || user?.departmentId || departments.find((d) => d.isActive)?.id || ''
   );
   const [assignedToId, setAssignedToId] = useState(task?.assignedTo?.id || '');
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || 'medium');
@@ -65,11 +65,18 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
 
   const activeDepartments = departments.filter((d) => d.isActive);
   const deptUsers = deptUsersQuery.data || [];
+  const noDepartments = activeDepartments.length === 0;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
+
+      {noDepartments && (
+        <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          No active departments found. Please ask an admin to create or reactivate a department first.
+        </div>
       )}
 
       <div>
@@ -162,7 +169,7 @@ export default function TaskForm({ departments, task, onSubmit, onCancel }: Task
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || noDepartments || !departmentId}
           className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-light disabled:opacity-50"
         >
           {loading ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
