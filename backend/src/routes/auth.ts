@@ -18,7 +18,7 @@ const createUserSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['admin', 'department_user']),
+  role: z.enum(['admin', 'department_user', 'officer']),
   departmentId: z.string().optional().nullable(),
 });
 
@@ -124,9 +124,8 @@ router.post('/users', authenticate, requireAdmin, validateBody(createUserSchema)
     if (role === 'department_user' && !departmentId) {
       return res.status(400).json({ message: 'Department is required for department users' });
     }
-
-    if (role === 'admin' && departmentId) {
-      return res.status(400).json({ message: 'Admin users cannot be assigned to a department' });
+    if ((role === 'admin' || role === 'officer') && departmentId) {
+      return res.status(400).json({ message: 'Admin and Officer users cannot be assigned to a department' });
     }
 
     const existing = await User.findOne({ email: email.toLowerCase() });
@@ -202,7 +201,7 @@ router.delete('/users/:id', authenticate, requireAdmin, async (req, res, next) =
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  role: z.enum(['admin', 'department_user']).optional(),
+  role: z.enum(['admin', 'department_user', 'officer']).optional(),
   departmentId: z.string().optional().nullable(),
 });
 

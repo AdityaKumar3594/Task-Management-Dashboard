@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Task } from '../models/Task';
 import { Department } from '../models/Department';
 import { User } from '../models/User';
-import { authenticate, canAccessDepartment } from '../middleware/auth';
+import { authenticate, canAccessDepartment, requireWriteAccess } from '../middleware/auth';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { getDisplayStatus } from '../utils/taskStatus';
 
@@ -93,6 +93,7 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
 
     const filter: Record<string, unknown> = {};
 
+    // department_user: scoped to own dept | officer + admin: see all | dept filter for admin
     if (req.user!.role === 'department_user') {
       filter.departmentId = req.user!.departmentId;
     } else if (departmentId) {
@@ -147,7 +148,7 @@ router.get('/', authenticate, validateQuery(taskQuerySchema), async (req, res, n
   }
 });
 
-router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, next) => {
+router.post('/', authenticate, requireWriteAccess, validateBody(createTaskSchema), async (req, res, next) => {
   try {
     const { title, description, departmentId, assignedToId, priority, dueDate } = req.body;
 
@@ -191,7 +192,7 @@ router.post('/', authenticate, validateBody(createTaskSchema), async (req, res, 
   }
 });
 
-router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res, next) => {
+router.put('/:id', authenticate, requireWriteAccess, validateBody(updateTaskSchema), async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
@@ -249,7 +250,7 @@ router.put('/:id', authenticate, validateBody(updateTaskSchema), async (req, res
   }
 });
 
-router.patch('/:id/complete', authenticate, async (req, res, next) => {
+router.patch('/:id/complete', authenticate, requireWriteAccess, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
@@ -271,7 +272,7 @@ router.patch('/:id/complete', authenticate, async (req, res, next) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req, res, next) => {
+router.delete('/:id', authenticate, requireWriteAccess, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });

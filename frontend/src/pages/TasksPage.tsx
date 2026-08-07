@@ -15,7 +15,7 @@ const LIMIT = 10;
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, canWrite } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [showModal, setShowModal] = useState(false);
@@ -171,12 +171,14 @@ export default function TasksPage() {
               : 'Manage and track department tasks'}
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="rounded-lg bg-navy px-3 py-2 text-sm font-medium text-white hover:bg-navy-light sm:px-4"
-        >
-          + New Task
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="rounded-lg bg-navy px-3 py-2 text-sm font-medium text-white hover:bg-navy-light sm:px-4"
+          >
+            + New Task
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -345,7 +347,7 @@ export default function TasksPage() {
                     <td className="px-4 py-3"><StatusBadge status={task.displayStatus} /></td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        {task.displayStatus !== 'completed' && (
+                        {canWrite && task.displayStatus !== 'completed' && (
                           <button
                             onClick={() => handleComplete(task.id)}
                             disabled={completingId === task.id}
@@ -354,29 +356,36 @@ export default function TasksPage() {
                             {completingId === task.id ? '...' : 'Complete'}
                           </button>
                         )}
-                        {task.displayStatus === 'completed' ? (
+                        {canWrite && (
+                          task.displayStatus === 'completed' ? (
+                            <button
+                              onClick={() => reopenMutation.mutate(task.id)}
+                              disabled={reopenMutation.isPending}
+                              className="text-xs font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                            >
+                              Reopen
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setEditingTask(task)}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                            >
+                              Edit
+                            </button>
+                          )
+                        )}
+                        {canWrite && (
                           <button
-                            onClick={() => reopenMutation.mutate(task.id)}
-                            disabled={reopenMutation.isPending}
-                            className="text-xs font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                            onClick={() => handleDelete(task.id)}
+                            disabled={deletingId === task.id}
+                            className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
                           >
-                            Reopen
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setEditingTask(task)}
-                            className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            Edit
+                            {deletingId === task.id ? '...' : 'Delete'}
                           </button>
                         )}
-                        <button
-                          onClick={() => handleDelete(task.id)}
-                          disabled={deletingId === task.id}
-                          className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
-                        >
-                          {deletingId === task.id ? '...' : 'Delete'}
-                        </button>
+                        {!canWrite && (
+                          <span className="text-xs text-gray-400 italic">View only</span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -424,7 +433,7 @@ export default function TasksPage() {
                   )}
                 </div>
                 <div className="flex gap-3 border-t border-gray-100 pt-2" onClick={(e) => e.stopPropagation()}>
-                  {task.displayStatus !== 'completed' && (
+                  {canWrite && task.displayStatus !== 'completed' && (
                     <button
                       onClick={() => handleComplete(task.id)}
                       disabled={completingId === task.id}
@@ -433,27 +442,34 @@ export default function TasksPage() {
                       {completingId === task.id ? '...' : '✓ Complete'}
                     </button>
                   )}
-                  {task.displayStatus === 'completed' ? (
+                  {canWrite && (
+                    task.displayStatus === 'completed' ? (
+                      <button
+                        onClick={() => reopenMutation.mutate(task.id)}
+                        disabled={reopenMutation.isPending}
+                        className="text-sm font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                      >
+                        Reopen
+                      </button>
+                    ) : (
+                      <button onClick={() => setEditingTask(task)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                        Edit
+                      </button>
+                    )
+                  )}
+                  {canWrite && (
                     <button
-                      onClick={() => reopenMutation.mutate(task.id)}
-                      disabled={reopenMutation.isPending}
-                      className="text-sm font-medium text-amber-600 hover:text-amber-800 disabled:opacity-40"
+                      onClick={() => handleDelete(task.id)}
+                      disabled={deletingId === task.id}
+                      className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
                     >
-                      Reopen
-                    </button>
-                  ) : (
-                    <button onClick={() => setEditingTask(task)}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                      Edit
+                      {deletingId === task.id ? '...' : 'Delete'}
                     </button>
                   )}
-                  <button
-                    onClick={() => handleDelete(task.id)}
-                    disabled={deletingId === task.id}
-                    className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
-                  >
-                    {deletingId === task.id ? '...' : 'Delete'}
-                  </button>
+                  {!canWrite && (
+                    <span className="text-xs text-gray-400 italic">View only</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -472,7 +488,7 @@ export default function TasksPage() {
         </>
       )}
 
-      {showModal && departmentsQuery.data && (
+      {canWrite && showModal && departmentsQuery.data && (
         <Modal title="Create Task" onClose={() => setShowModal(false)}>
           <TaskForm
             departments={departmentsQuery.data}
@@ -482,7 +498,7 @@ export default function TasksPage() {
         </Modal>
       )}
 
-      {editingTask && departmentsQuery.data && (
+      {canWrite && editingTask && departmentsQuery.data && (
         <Modal title="Edit Task" onClose={() => setEditingTask(null)}>
           <TaskForm
             departments={departmentsQuery.data}

@@ -24,11 +24,18 @@ export default function ProtectedRoute() {
   );
 }
 
+// Admin-only pages (Users, write operations on Departments)
 export function AdminRoute() {
   const { isAdmin, loading } = useAuth();
-
   if (loading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
 
+// Admin + Officer can see Departments in read-only mode
+export function AdminOrOfficerRoute() {
+  const { isAdmin, isOfficer, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdmin && !isOfficer) return <Navigate to="/" replace />;
   return <Outlet />;
 }

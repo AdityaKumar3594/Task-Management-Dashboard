@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi } from '../api';
 import { getErrorMessage } from '../api/client';
 import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
 import type { CreateDepartmentInput, Department } from '../types';
 
 export default function DepartmentsPage() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [form, setForm] = useState<CreateDepartmentInput>({ name: '', code: '', description: '' });
@@ -76,12 +78,16 @@ export default function DepartmentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-navy sm:text-2xl">Departments</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage naval departments</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {isAdmin ? 'Manage naval departments' : 'View naval departments'}
+          </p>
         </div>
-        <button onClick={openCreate}
-          className="rounded-lg bg-navy px-3 py-2 text-sm font-medium text-white hover:bg-navy-light sm:px-4">
-          + Add Department
-        </button>
+        {isAdmin && (
+          <button onClick={openCreate}
+            className="rounded-lg bg-navy px-3 py-2 text-sm font-medium text-white hover:bg-navy-light sm:px-4">
+            + Add Department
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -116,17 +122,21 @@ export default function DepartmentsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-3">
-                        <button onClick={() => openEdit(dept)}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800">Edit</button>
-                        <button onClick={() => handleToggleActive(dept)}
-                          disabled={toggleActiveMutation.isPending}
-                          className={`text-xs font-medium disabled:opacity-50 ${
-                            dept.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
-                          }`}>
-                          {dept.isActive ? 'Deactivate' : 'Reactivate'}
-                        </button>
-                      </div>
+                      {isAdmin ? (
+                        <div className="flex gap-3">
+                          <button onClick={() => openEdit(dept)}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-800">Edit</button>
+                          <button onClick={() => handleToggleActive(dept)}
+                            disabled={toggleActiveMutation.isPending}
+                            className={`text-xs font-medium disabled:opacity-50 ${
+                              dept.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
+                            }`}>
+                            {dept.isActive ? 'Deactivate' : 'Reactivate'}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs italic text-gray-400">View only</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -153,15 +163,21 @@ export default function DepartmentsPage() {
                   <p className="mb-3 text-xs text-gray-500">{dept.description}</p>
                 )}
                 <div className="flex gap-4 border-t border-gray-100 pt-3">
-                  <button onClick={() => openEdit(dept)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800">Edit</button>
-                  <button onClick={() => handleToggleActive(dept)}
-                    disabled={toggleActiveMutation.isPending}
-                    className={`text-sm font-medium disabled:opacity-50 ${
-                      dept.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
-                    }`}>
-                    {dept.isActive ? 'Deactivate' : 'Reactivate'}
-                  </button>
+                  {isAdmin ? (
+                    <>
+                      <button onClick={() => openEdit(dept)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800">Edit</button>
+                      <button onClick={() => handleToggleActive(dept)}
+                        disabled={toggleActiveMutation.isPending}
+                        className={`text-sm font-medium disabled:opacity-50 ${
+                          dept.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'
+                        }`}>
+                        {dept.isActive ? 'Deactivate' : 'Reactivate'}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs italic text-gray-400">View only</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -169,7 +185,7 @@ export default function DepartmentsPage() {
         </>
       )}
 
-      {showModal && (
+      {isAdmin && showModal && (
         <Modal title={editingDept ? 'Edit Department' : 'Add Department'} onClose={closeModal}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}

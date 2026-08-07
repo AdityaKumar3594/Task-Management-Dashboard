@@ -141,10 +141,11 @@ export default function UsersPage() {
   };
 
   // FIX #7: role badge styles
-  const roleBadge = (role: UserRole) =>
-    role === 'admin'
-      ? 'bg-navy text-white'
-      : 'bg-blue-100 text-blue-800';
+  const roleBadge = (role: UserRole) => {
+    if (role === 'admin') return 'bg-navy text-white';
+    if (role === 'officer') return 'bg-purple-100 text-purple-800';
+    return 'bg-blue-100 text-blue-800';
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -184,6 +185,7 @@ export default function UsersPage() {
               onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as UserRole, departmentId: '' })}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy">
               <option value="department_user">Department User</option>
+              <option value="officer">Officer (Read-Only)</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -331,6 +333,7 @@ export default function UsersPage() {
                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole, departmentId: '' })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy">
                 <option value="department_user">Department User</option>
+                <option value="officer">Officer (Read-Only)</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

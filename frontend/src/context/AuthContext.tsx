@@ -10,6 +10,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  isOfficer: boolean;
+  canWrite: boolean; // false for officer, true for admin + dept_user
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -67,6 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         isAdmin: user?.role === 'admin',
+        isOfficer: user?.role === 'officer',
+        canWrite: user?.role === 'admin' || user?.role === 'department_user',
       }}
     >
       {children}

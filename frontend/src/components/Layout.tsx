@@ -11,7 +11,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isOfficer } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -64,15 +64,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <NavLink to="/tasks" className={navLinkClass} onClick={closeSidebar}>
             Tasks
           </NavLink>
+          {/* Officer sees Departments read-only, but not Users */}
+          {(isAdmin || isOfficer) && (
+            <NavLink to="/departments" className={navLinkClass} onClick={closeSidebar}>
+              Departments
+            </NavLink>
+          )}
           {isAdmin && (
-            <>
-              <NavLink to="/departments" className={navLinkClass} onClick={closeSidebar}>
-                Departments
-              </NavLink>
-              <NavLink to="/users" className={navLinkClass} onClick={closeSidebar}>
-                Users
-              </NavLink>
-            </>
+            <NavLink to="/users" className={navLinkClass} onClick={closeSidebar}>
+              Users
+            </NavLink>
           )}
         </nav>
 
@@ -83,6 +84,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-white/60">{user?.email}</p>
             {user?.department && (
               <p className="mt-1 text-xs text-gold">{user.department.name}</p>
+            )}
+            {isOfficer && (
+              <span className="mt-1 inline-flex rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-gold">
+                Read-Only Observer
+              </span>
             )}
           </div>
           <button

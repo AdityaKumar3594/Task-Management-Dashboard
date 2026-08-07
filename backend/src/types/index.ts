@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'department_user';
+export type UserRole = 'admin' | 'department_user' | 'officer';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStoredStatus = 'ongoing' | 'completed';
 export type DisplayStatus = 'completed' | 'ongoing' | 'overdue';

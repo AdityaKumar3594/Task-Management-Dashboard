@@ -39,8 +39,19 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Officers are read-only — block any write operation for them
+export function requireWriteAccess(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+  if (req.user.role === 'officer') {
+    return res.status(403).json({ message: 'Officers have read-only access and cannot perform this action' });
+  }
+  next();
+}
+
 export function canAccessDepartment(req: Request, departmentId: string): boolean {
   if (!req.user) return false;
   if (req.user.role === 'admin') return true;
+  if (req.user.role === 'officer') return false; // officer: view-only via GET, no mutations
+  if (!req.user.departmentId) return false;
   return req.user.departmentId === departmentId;
 }
