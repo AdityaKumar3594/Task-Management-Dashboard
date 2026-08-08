@@ -275,7 +275,6 @@ export default function TasksPage() {
           Total: {displayedTasks.length} task{displayedTasks.length !== 1 ? 's' : ''}
         </p>
       </div>
-      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:gap-3 sm:p-4">        {/* Search */}
