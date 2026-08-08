@@ -39,6 +39,9 @@ app.use(
 // Handle preflight for all routes explicitly
 app.options('*', cors());
 
+// Trust Render's reverse proxy so express-rate-limit can read the real client IP
+app.set('trust proxy', 1);
+
 // Security headers (after CORS so preflight isn't blocked)
 app.use(helmet());
 
