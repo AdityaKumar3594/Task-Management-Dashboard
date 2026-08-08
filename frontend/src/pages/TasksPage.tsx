@@ -233,8 +233,8 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Print-only header — hidden on screen, visible when printing */}
-      <div id="print-area" className="hidden">
+      {/* Print-only layout — hidden on screen via #print-area CSS, shown when printing */}
+      <div id="print-area">
         <div className="mb-6 flex items-center gap-4 border-b border-gray-300 pb-4">
           <img src="/navy-logo.svg" alt="Indian Navy" className="h-14 w-14" />
           <div>

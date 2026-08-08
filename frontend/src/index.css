@@ -20,17 +20,47 @@ body {
 }
 
 /* ── Print styles ─────────────────────────────────────── */
-@media print {
-  /* Hide everything except the print area */
-  body * { visibility: hidden; }
-  #print-area, #print-area * { visibility: visible; }
-  #print-area { position: absolute; inset: 0; padding: 24px; background: white; }
+#print-area {
+  display: none;
+}
 
-  /* Hide browser default header/footer */
-  @page { margin: 1.5cm; }
+@media print {
+  /* Hide all on-screen UI */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the dedicated print layout (must override display:none) */
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    overflow: visible;
+    padding: 24px;
+    background: white;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
 
   /* Ensure table doesn't break mid-row */
-  table { border-collapse: collapse; width: 100%; }
-  tr { page-break-inside: avoid; }
-  thead { display: table-header-group; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
 }
