@@ -15,7 +15,7 @@ const LIMIT = 10;
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
-  const { isAdmin, user, canWrite } = useAuth();
+  const { isAdmin, user, canWrite, canEditDelete } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [showModal, setShowModal] = useState(false);
@@ -356,7 +356,7 @@ export default function TasksPage() {
                             {completingId === task.id ? '...' : 'Complete'}
                           </button>
                         )}
-                        {canWrite && (
+                        {canEditDelete && (
                           task.displayStatus === 'completed' ? (
                             <button
                               onClick={() => reopenMutation.mutate(task.id)}
@@ -374,7 +374,7 @@ export default function TasksPage() {
                             </button>
                           )
                         )}
-                        {canWrite && (
+                        {canEditDelete && (
                           <button
                             onClick={() => handleDelete(task.id)}
                             disabled={deletingId === task.id}
@@ -383,7 +383,7 @@ export default function TasksPage() {
                             {deletingId === task.id ? '...' : 'Delete'}
                           </button>
                         )}
-                        {!canWrite && (
+                        {!canWrite && !canEditDelete && (
                           <span className="text-xs text-gray-400 italic">View only</span>
                         )}
                       </div>
@@ -442,7 +442,7 @@ export default function TasksPage() {
                       {completingId === task.id ? '...' : '✓ Complete'}
                     </button>
                   )}
-                  {canWrite && (
+                  {canEditDelete && (
                     task.displayStatus === 'completed' ? (
                       <button
                         onClick={() => reopenMutation.mutate(task.id)}
@@ -458,7 +458,7 @@ export default function TasksPage() {
                       </button>
                     )
                   )}
-                  {canWrite && (
+                  {canEditDelete && (
                     <button
                       onClick={() => handleDelete(task.id)}
                       disabled={deletingId === task.id}
@@ -467,7 +467,7 @@ export default function TasksPage() {
                       {deletingId === task.id ? '...' : 'Delete'}
                     </button>
                   )}
-                  {!canWrite && (
+                  {!canWrite && !canEditDelete && (
                     <span className="text-xs text-gray-400 italic">View only</span>
                   )}
                 </div>
@@ -546,6 +546,8 @@ export default function TasksPage() {
           completing={completingId === viewingTask.id}
           deleting={deletingId === viewingTask.id}
           reopening={reopenMutation.isPending}
+          canComplete={canWrite}
+          canEditDelete={canEditDelete}
         />
       )}
     </div>

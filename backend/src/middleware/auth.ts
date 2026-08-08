@@ -51,7 +51,7 @@ export function requireWriteAccess(req: Request, res: Response, next: NextFuncti
 export function canAccessDepartment(req: Request, departmentId: string): boolean {
   if (!req.user) return false;
   if (req.user.role === 'admin') return true;
-  if (req.user.role === 'officer') return false; // officer: view-only via GET, no mutations
+  if (req.user.role === 'officer') return false;
   if (!req.user.departmentId) return false;
   return req.user.departmentId === departmentId;
 }

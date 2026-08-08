@@ -11,7 +11,8 @@ interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isOfficer: boolean;
-  canWrite: boolean; // false for officer, true for admin + dept_user
+  canWrite: boolean;      // can create tasks + complete (admin + dept_user)
+  canEditDelete: boolean; // can edit/delete tasks (admin only)
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === 'admin',
         isOfficer: user?.role === 'officer',
         canWrite: user?.role === 'admin' || user?.role === 'department_user',
+        canEditDelete: user?.role === 'admin',
       }}
     >
       {children}

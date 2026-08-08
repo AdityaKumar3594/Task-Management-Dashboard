@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Task } from '../models/Task';
 import { Department } from '../models/Department';
 import { User } from '../models/User';
-import { authenticate, canAccessDepartment, requireWriteAccess } from '../middleware/auth';
+import { authenticate, canAccessDepartment, requireWriteAccess, requireAdmin } from '../middleware/auth';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { getDisplayStatus } from '../utils/taskStatus';
 
@@ -192,7 +192,7 @@ router.post('/', authenticate, requireWriteAccess, validateBody(createTaskSchema
   }
 });
 
-router.put('/:id', authenticate, requireWriteAccess, validateBody(updateTaskSchema), async (req, res, next) => {
+router.put('/:id', authenticate, requireAdmin, validateBody(updateTaskSchema), async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
@@ -255,8 +255,9 @@ router.patch('/:id/complete', authenticate, requireWriteAccess, async (req, res,
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
 
-    if (!canAccessDepartment(req, task.departmentId.toString())) {
-      return res.status(403).json({ message: 'Access denied' });
+    // Dept users can only complete tasks in their own department
+    if (req.user!.role === 'department_user' && task.departmentId.toString() !== req.user!.departmentId) {
+      return res.status(403).json({ message: 'You can only complete tasks in your department' });
     }
 
     task.status = 'completed';
@@ -272,7 +273,7 @@ router.patch('/:id/complete', authenticate, requireWriteAccess, async (req, res,
   }
 });
 
-router.delete('/:id', authenticate, requireWriteAccess, async (req, res, next) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });

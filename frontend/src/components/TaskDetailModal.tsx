@@ -12,6 +12,8 @@ interface TaskDetailModalProps {
   completing: boolean;
   deleting: boolean;
   reopening: boolean;
+  canComplete: boolean;
+  canEditDelete: boolean;
 }
 
 export default function TaskDetailModal({
@@ -24,6 +26,8 @@ export default function TaskDetailModal({
   completing,
   deleting,
   reopening,
+  canComplete,
+  canEditDelete,
 }: TaskDetailModalProps) {
   const formatDate = (date: string | null) => {
     if (!date) return '—';
@@ -119,7 +123,7 @@ export default function TaskDetailModal({
 
         {/* Actions */}
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
-          {task.displayStatus !== 'completed' && (
+          {canComplete && task.displayStatus !== 'completed' && (
             <button
               onClick={onComplete}
               disabled={completing}
@@ -129,7 +133,7 @@ export default function TaskDetailModal({
             </button>
           )}
 
-          {task.displayStatus === 'completed' ? (
+          {canEditDelete && task.displayStatus === 'completed' && (
             <button
               onClick={onReopen}
               disabled={reopening}
@@ -137,7 +141,9 @@ export default function TaskDetailModal({
             >
               {reopening ? '...' : 'Reopen'}
             </button>
-          ) : (
+          )}
+
+          {canEditDelete && task.displayStatus !== 'completed' && (
             <button
               onClick={onEdit}
               className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-light"
@@ -146,13 +152,19 @@ export default function TaskDetailModal({
             </button>
           )}
 
-          <button
-            onClick={onDelete}
-            disabled={deleting}
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-40"
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
+          {canEditDelete && (
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-40"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
+
+          {!canComplete && !canEditDelete && (
+            <p className="text-sm italic text-gray-400">View only — no actions available</p>
+          )}
         </div>
       </div>
     </Modal>
