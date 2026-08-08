@@ -191,7 +191,7 @@ export default function TasksPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-navy sm:text-2xl">Tasks</h1>
           <p className="mt-0.5 text-sm text-gray-500">
@@ -213,6 +213,24 @@ export default function TasksPage() {
             + New Task
           </button>
         )}
+        {/* Export CSV */}
+        <button
+          onClick={exportCSV}
+          disabled={displayedTasks.length === 0}
+          title="Export current view as CSV"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-green-500 hover:text-green-700 disabled:opacity-40"
+        >
+          ⬇ CSV
+        </button>
+        {/* Print */}
+        <button
+          onClick={handlePrint}
+          disabled={displayedTasks.length === 0}
+          title="Print task list"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-navy hover:text-navy disabled:opacity-40"
+        >
+          🖨 Print
+        </button>
       </div>
 
       {/* Print-only header — hidden on screen, visible when printing */}
@@ -332,29 +350,6 @@ export default function TasksPage() {
               {displayedTasks.length}
             </span>
           )}
-        </button>
-
-        {/* Separator */}
-        <div className="hidden h-8 w-px self-center bg-gray-200 sm:block" />
-
-        {/* Export CSV */}
-        <button
-          onClick={exportCSV}
-          disabled={displayedTasks.length === 0}
-          title="Export current view as CSV"
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-green-500 hover:text-green-700 disabled:opacity-40"
-        >
-          ⬇ CSV
-        </button>
-
-        {/* Print */}
-        <button
-          onClick={handlePrint}
-          disabled={displayedTasks.length === 0}
-          title="Print task list"
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-navy hover:text-navy disabled:opacity-40"
-        >
-          🖨 Print
         </button>
       </div>
 
