@@ -129,6 +129,40 @@ export default function TasksPage() {
     return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
   };
 
+  // Export current filtered view as CSV
+  const exportCSV = () => {
+    const rows = displayedTasks;
+    if (rows.length === 0) return;
+
+    const headers = ['Title', 'Description', 'Department', 'Assigned To', 'Priority', 'Due Date', 'Status', 'Created'];
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+    const lines = [
+      headers.join(','),
+      ...rows.map((t) => [
+        escape(t.title),
+        escape(t.description || ''),
+        escape(t.department?.name || ''),
+        escape(t.assignedTo?.name || 'Unassigned'),
+        escape(t.priority),
+        escape(formatDate(t.dueDate)),
+        escape(t.displayStatus),
+        escape(formatDate(t.createdAt)),
+      ].join(',')),
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Print the current task list
+  const handlePrint = () => window.print();
+
   const priorityColors: Record<TaskPriority, string> = {
     low: 'text-gray-600',
     medium: 'text-yellow-600',
@@ -181,9 +215,52 @@ export default function TasksPage() {
         )}
       </div>
 
+      {/* Print-only header — hidden on screen, visible when printing */}
+      <div id="print-area" className="hidden">
+        <div className="mb-6 flex items-center gap-4 border-b border-gray-300 pb-4">
+          <img src="/navy-logo.svg" alt="Indian Navy" className="h-14 w-14" />
+          <div>
+            <h1 className="text-xl font-bold" style={{ color: '#001f3f' }}>Indian Navy — Task Management Dashboard</h1>
+            <p className="text-sm text-gray-500">
+              Report generated: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {filterDept && departmentsQuery.data
+                ? ` · Department: ${departmentsQuery.data.find((d) => d.id === filterDept)?.name ?? ''}`
+                : ''}
+              {filterStatus ? ` · Status: ${filterStatus}` : ''}
+              {filterPriority ? ` · Priority: ${filterPriority}` : ''}
+            </p>
+          </div>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#001f3f', color: 'white' }}>
+              {['#', 'Title', 'Department', 'Assigned To', 'Priority', 'Due Date', 'Status'].map((h) => (
+                <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {displayedTasks.map((task, i) => (
+              <tr key={task.id} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: i % 2 === 0 ? 'white' : '#f9fafb' }}>
+                <td style={{ padding: '5px 8px', color: '#6b7280' }}>{i + 1}</td>
+                <td style={{ padding: '5px 8px', fontWeight: 500 }}>{task.title}</td>
+                <td style={{ padding: '5px 8px' }}>{task.department?.name || '—'}</td>
+                <td style={{ padding: '5px 8px' }}>{task.assignedTo?.name || 'Unassigned'}</td>
+                <td style={{ padding: '5px 8px', textTransform: 'capitalize' }}>{task.priority}</td>
+                <td style={{ padding: '5px 8px' }}>{formatDate(task.dueDate)}</td>
+                <td style={{ padding: '5px 8px', textTransform: 'capitalize' }}>{task.displayStatus}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ marginTop: '16px', fontSize: '10px', color: '#9ca3af', textAlign: 'right' }}>
+          Total: {displayedTasks.length} task{displayedTasks.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+      </div>
+
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:gap-3 sm:p-4">
-        {/* Search */}
+      <div className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:gap-3 sm:p-4">        {/* Search */}
         <div className="relative flex-1 min-w-[160px]">
           <svg className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
             fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,6 +332,29 @@ export default function TasksPage() {
               {displayedTasks.length}
             </span>
           )}
+        </button>
+
+        {/* Separator */}
+        <div className="hidden h-8 w-px self-center bg-gray-200 sm:block" />
+
+        {/* Export CSV */}
+        <button
+          onClick={exportCSV}
+          disabled={displayedTasks.length === 0}
+          title="Export current view as CSV"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-green-500 hover:text-green-700 disabled:opacity-40"
+        >
+          ⬇ CSV
+        </button>
+
+        {/* Print */}
+        <button
+          onClick={handlePrint}
+          disabled={displayedTasks.length === 0}
+          title="Print task list"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-navy hover:text-navy disabled:opacity-40"
+        >
+          🖨 Print
         </button>
       </div>
 
